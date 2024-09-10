@@ -121,6 +121,24 @@ class TUMParser:
 
             self.frames.append(frame)
 
+class VSLAMLABParser:
+    def __init__(self, input_folder):
+        self.input_folder = input_folder
+        self.load_poses(self.input_folder)
+        self.n_img = len(self.color_paths)
+
+    def parse_list(self, filepath, skiprows=0):
+        data = np.loadtxt(filepath, delimiter=" ", dtype=np.unicode_, skiprows=skiprows)
+        return data
+
+    def load_poses(self, datapath):
+
+        rgb_txt = os.path.join(datapath, "rgb.txt")
+        image_data = self.parse_list(rgb_txt)
+
+        self.color_paths, self.poses, self.depth_paths, self.frames = [], [], [], []
+        for i, data in enumerate(image_data):
+            self.color_paths += [os.path.join(datapath, data[1])]
 
 class EuRoCParser:
     def __init__(self, input_folder, start_idx=0):
@@ -403,6 +421,13 @@ class TUMDataset(MonocularDataset):
         self.depth_paths = parser.depth_paths
         self.poses = parser.poses
 
+class VSLAMLABDataset(MonocularDataset):
+    def __init__(self, args, path, config):
+        super().__init__(args, path, config)
+        dataset_path = config["Dataset"]["dataset_path"]
+        parser = VSLAMLABParser(dataset_path)
+        self.num_imgs = parser.n_img
+        self.color_paths = parser.color_paths
 
 class ReplicaDataset(MonocularDataset):
     def __init__(self, args, path, config):
@@ -528,5 +553,7 @@ def load_dataset(args, path, config):
         return EurocDataset(args, path, config)
     elif config["Dataset"]["type"] == "realsense":
         return RealsenseDataset(args, path, config)
+    elif config["Dataset"]["type"] == "vslamlab":
+        return VSLAMLABDataset(args, path, config)
     else:
         raise ValueError("Unknown dataset type")
