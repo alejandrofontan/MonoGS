@@ -21,6 +21,36 @@ from gaussian_splatting.utils.loss_utils import ssim
 from gaussian_splatting.utils.system_utils import mkdir_p
 from utils.logging_utils import Log
 
+from scipy.spatial.transform import Rotation as Rot
+
+def write_tum_trajectory(frames, kf_ids, exp_folder, exp_id, sequence_path):
+
+    def gen_pose_matrix(R, T):
+        pose = np.eye(4)
+        pose[0:3, 0:3] = R.cpu().numpy()
+        pose[0:3, 3] = T.cpu().numpy()
+        return pose
+
+    rgb_txt = os.path.join(sequence_path, 'rgb.txt')
+    rgb_timestamps = []
+    with open(rgb_txt, 'r') as file:
+        for line in file:
+            timestamp, path = line.strip().split(' ')
+            rgb_timestamps.append(float(timestamp))
+
+    traj_txt = os.path.join(exp_folder, exp_id.zfill(5) + "_KeyFrameTrajectory.txt")
+    with open(traj_txt, 'w') as file:
+        for kf_id in kf_ids:
+            kf = frames[kf_id]
+            pose_est = np.linalg.inv(gen_pose_matrix(kf.R, kf.T))
+            t = pose_est[:3, 3]
+            tx, ty, tz = t
+            R = pose_est[:3, :3]
+            q = Rot.from_matrix(R).as_quat()
+            qx, qy, qz, qw = q
+            ts = rgb_timestamps[kf_id]
+            line = str(ts) + " " + str(tx) + " " + str(ty) + " " + str(tz) + " " + str(qx) + " " + str(qy) + " " + str(qz) + " " + str(qw) + "\n"
+            file.write(line)
 
 def evaluate_evo(poses_gt, poses_est, plot_dir, label, monocular=False):
     ## Plot

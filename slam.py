@@ -15,7 +15,7 @@ from gaussian_splatting.utils.system_utils import mkdir_p
 from gui import gui_utils, slam_gui
 from utils.config_utils import load_config
 from utils.dataset import load_dataset
-from utils.eval_utils import eval_ate, eval_rendering, save_gaussians
+from utils.eval_utils import eval_ate, eval_rendering, save_gaussians, write_tum_trajectory
 from utils.logging_utils import Log
 from utils.multiprocessing_utils import FakeQueue
 from utils.slam_backend import BackEnd
@@ -118,6 +118,10 @@ class SLAM:
         Log("Total time", start.elapsed_time(end) * 0.001, tag="Eval")
         Log("Total FPS", N_frames / (start.elapsed_time(end) * 0.001), tag="Eval")
 
+        write_tum_trajectory(self.frontend.cameras, self.frontend.kf_indices,
+                             config["Results"]['save_dir'], config["Results"]['exp_id'],
+                             config["Dataset"]['dataset_path'])
+
         if self.eval_rendering:
             self.gaussians = self.frontend.gaussians
             kf_indices = self.frontend.kf_indices
@@ -187,11 +191,11 @@ class SLAM:
             save_gaussians(self.gaussians, self.save_dir, "final_after_opt", final=True)
 
         backend_queue.put(["stop"])
-        backend_process.join()
+        #backend_process.join()
         Log("Backend stopped and joined the main thread")
         if self.use_gui:
             q_main2vis.put(gui_utils.GaussianPacket(finish=True))
-            gui_process.join()
+            #gui_process.join()
             Log("GUI Stopped and joined the main thread")
 
     def run(self):
@@ -254,3 +258,4 @@ if __name__ == "__main__":
 
     # All done
     Log("Done.")
+    sys.exit(0)
