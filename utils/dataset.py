@@ -429,6 +429,29 @@ class VSLAMLABDataset(MonocularDataset):
         self.num_imgs = parser.n_img
         self.color_paths = parser.color_paths
 
+    def __getitem__(self, idx):
+        color_path = self.color_paths[idx]
+        pose = torch.eye(4, device=self.device, dtype=self.dtype)
+
+        image = np.array(Image.open(color_path))
+        depth = None
+
+        if self.disorted:
+            image = cv2.remap(image, self.map1x, self.map1y, cv2.INTER_LINEAR)
+
+        if self.has_depth:
+            depth_path = self.depth_paths[idx]
+            depth = np.array(Image.open(depth_path)) / self.depth_scale
+
+        image = (
+            torch.from_numpy(image / 255.0)
+            .clamp(0.0, 1.0)
+            .permute(2, 0, 1)
+            .to(device=self.device, dtype=self.dtype)
+        )
+
+        return image, depth, pose
+
 class ReplicaDataset(MonocularDataset):
     def __init__(self, args, path, config):
         super().__init__(args, path, config)

@@ -199,57 +199,55 @@ class SLAM:
 
 
 if __name__ == "__main__":
-    # Set up command line argument parser
-    parser = ArgumentParser(description="Training script parameters")
-    parser.add_argument("--config", type=str)
-    parser.add_argument("--eval", action="store_true")
 
-    args = parser.parse_args(sys.argv[1:])
+    args_dict = {}
+    for arg in sys.argv[1:]:
+        if ':' in arg:
+            key, value = arg.split(':', 1)  # Split on the first occurrence of ':'
+            args_dict[key] = value
+
+    sequence_path = args_dict.get('sequence_path', None)
+    exp_id = args_dict.get('exp_id', None)
+    exp_folder = args_dict.get('exp_folder', None)
+    config_yaml = args_dict.get('config', None)
+    verbose = bool(args_dict.get('verbose', False))
 
     mp.set_start_method("spawn")
 
-    with open(args.config, "r") as yml:
-        config = yaml.safe_load(yml)
+    config = load_config(config_yaml)
+    config["Dataset"]["dataset_path"] = sequence_path
+    config["Results"]["save_dir"] = exp_folder
+    config["Results"]["exp_id"] = exp_id
 
-    config = load_config(args.config)
-    save_dir = None
+    calibration_yaml = os.path.join(sequence_path, "calibration.yaml")
+    with open(calibration_yaml, 'r') as file:
+        lines = file.readlines()
+    if lines and lines[0].strip() == '%YAML:1.0':
+        lines = lines[1:]
 
-    if args.eval:
-        Log("Running MonoGS in Evaluation Mode")
-        Log("Following config will be overriden")
-        Log("\tsave_results=True")
-        config["Results"]["save_results"] = True
-        Log("\tuse_gui=False")
-        config["Results"]["use_gui"] = False
-        Log("\teval_rendering=True")
-        config["Results"]["eval_rendering"] = True
-        Log("\tuse_wandb=True")
-        config["Results"]["use_wandb"] = True
+    calibration = yaml.safe_load(''.join(lines))
 
-    if config["Results"]["save_results"]:
-        mkdir_p(config["Results"]["save_dir"])
-        current_datetime = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        path = config["Dataset"]["dataset_path"].split("/")
-        save_dir = os.path.join(
-            config["Results"]["save_dir"], path[-3] + "_" + path[-2], current_datetime
-        )
-        tmp = args.config
-        tmp = tmp.split(".")[0]
-        config["Results"]["save_dir"] = save_dir
-        mkdir_p(save_dir)
-        with open(os.path.join(save_dir, "config.yml"), "w") as file:
-            documents = yaml.dump(config, file)
-        Log("saving results in " + save_dir)
-        run = wandb.init(
-            project="MonoGS",
-            name=f"{tmp}_{current_datetime}",
-            config=config,
-            mode=None if config["Results"]["use_wandb"] else "disabled",
-        )
-        wandb.define_metric("frame_idx")
-        wandb.define_metric("ate*", step_metric="frame_idx")
+    config["Dataset"]["Calibration"]["fx"] = calibration["Camera.fx"]
+    config["Dataset"]["Calibration"]["fy"] = calibration["Camera.fy"]
+    config["Dataset"]["Calibration"]["cx"] = calibration["Camera.cx"]
+    config["Dataset"]["Calibration"]["cy"] = calibration["Camera.cy"]
+    config["Dataset"]["Calibration"]["k1"] = calibration["Camera.k1"]
+    config["Dataset"]["Calibration"]["k2"] = calibration["Camera.k2"]
+    config["Dataset"]["Calibration"]["p1"] = calibration["Camera.p1"]
+    config["Dataset"]["Calibration"]["p2"] = calibration["Camera.p2"]
+    config["Dataset"]["Calibration"]["k3"] = calibration["Camera.k3"]
+    config["Dataset"]["Calibration"]["width"] = calibration["Camera.w"]
+    config["Dataset"]["Calibration"]["height"] = calibration["Camera.h"]
+    config["Dataset"]["Calibration"]["distorted"] = True
 
-    slam = SLAM(config, save_dir=save_dir)
+    if (calibration["Camera.k1"] == 0 and calibration["Camera.k2"] == 0 and calibration["Camera.k3"] == 0
+            and calibration["Camera.p1"] == 0 and calibration["Camera.p2"] == 0):
+        config["Dataset"]["Calibration"]["distorted"] = False
+
+    Log(f"\tuse_gui={verbose}")
+    config["Results"]["use_gui"] = verbose
+
+    slam = SLAM(config, save_dir=exp_folder)
 
     slam.run()
     wandb.finish()
