@@ -1,7 +1,7 @@
 import os
 import sys
 import time
-from argparse import ArgumentParser
+import argparse
 from datetime import datetime
 
 import torch
@@ -203,18 +203,23 @@ class SLAM:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
 
-    args_dict = {}
-    for arg in sys.argv[1:]:
-        if ':' in arg:
-            key, value = arg.split(':', 1)  # Split on the first occurrence of ':'
-            args_dict[key] = value
+    parser.add_argument("--sequence_path", type=str, help="path to image directory")
+    parser.add_argument("--calibration_yaml", type=str, help="path to calibration file")
+    parser.add_argument("--rgb_txt", type=str, help="path to image list")
+    parser.add_argument("--exp_folder", type=str, help="path to save results")
+    parser.add_argument("--exp_it", type=str, help="experiment iteration")
+    parser.add_argument("--settings_yaml", type=str, help="settings_yaml")
+    parser.add_argument("--verbose", type=str, help="verbose")
+    parser.add_argument("--config_yaml", type=str, help="config_yaml")
 
-    sequence_path = args_dict.get('sequence_path', None)
-    exp_id = args_dict.get('exp_id', None)
-    exp_folder = args_dict.get('exp_folder', None)
-    config_yaml = args_dict.get('config', None)
-    verbose = bool(args_dict.get('verbose', False))
+    args = parser.parse_args()
+    sequence_path = args.sequence_path
+    exp_id = args.exp_it
+    exp_folder = args.exp_folder
+    config_yaml = args.config_yaml
+    verbose = bool(int(args.verbose))
 
     mp.set_start_method("spawn")
 
