@@ -1,4 +1,4 @@
-inherit_from: "Baselines/MonoGS/configs/mono/vslamlab/base_config.yaml"
+inherit_from: "configs/mono/vslamlab/base_config.yaml"
 
 Dataset:
   dataset_path: ""
