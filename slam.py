@@ -214,7 +214,7 @@ if __name__ == "__main__":
     parser.add_argument("--verbose", type=str, help="verbose")
     parser.add_argument("--config_yaml", type=str, help="config_yaml")
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
     sequence_path = args.sequence_path
     exp_id = args.exp_it
     exp_folder = args.exp_folder
